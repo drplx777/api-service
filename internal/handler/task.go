@@ -2,6 +2,7 @@ package handler
 
 import (
 	"api-service/internal/client"
+	"bytes"
 	"io"
 
 	"github.com/gofiber/fiber/v3"
@@ -16,7 +17,8 @@ func RegisterTaskRoutes(app *fiber.App) {
 }
 
 func createTask(c fiber.Ctx) error {
-	resp, err := client.Post("/create", c.Body())
+	reader := bytes.NewReader(c.Body())
+	resp, err := client.Post("/create", reader)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create task")
 	}
@@ -57,8 +59,9 @@ func getTaskByID(c fiber.Ctx) error {
 	return c.Send(body)
 }
 func updateTask(c fiber.Ctx) error {
+	reader := bytes.NewReader(c.Body())
 	id := c.Params("id")
-	resp, err := client.Put("/update?id="+id, c.Body())
+	resp, err := client.Put("/update?id="+id, reader)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update task")
 	}
