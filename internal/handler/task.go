@@ -14,6 +14,8 @@ func RegisterTaskRoutes(app *fiber.App) {
 	app.Get("/task/by_id/:id", getTaskByID)
 	app.Put("/update/:id", updateTask)
 	app.Delete("/delete/:id", deleteTask)
+	app.Put("/done/:id'", doneTask)
+
 }
 
 func createTask(c fiber.Ctx) error {
@@ -78,6 +80,20 @@ func deleteTask(c fiber.Ctx) error {
 	resp, err := client.Delete("/delete?id=" + id)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to delete task")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read response body")
+	}
+	c.Status(resp.StatusCode)
+	return c.Send(body)
+}
+func doneTask(c fiber.Ctx) error {
+	id := c.Params("id")
+	resp, err := client.Put("/done?id="+id, nil)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to mark task as done")
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)

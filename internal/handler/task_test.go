@@ -117,3 +117,22 @@ func TestProxyDelete(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 }
+
+func TestProxyDone(t *testing.T) {
+	stub := setupStubDBServer(http.StatusOK, `{"id":"1","title":"T","description":"D"}`)
+	defer stub.Close()
+	os.Setenv("DB_SERVICE_URL", stub.URL)
+
+	app := fiber.New()
+	RegisterTaskRoutes(app)
+	req := httptest.NewRequest("PUT", "/done/1", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("Failed to mark task as done: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+}
