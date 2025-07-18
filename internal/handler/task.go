@@ -14,7 +14,7 @@ func RegisterTaskRoutes(app *fiber.App) {
 	app.Get("/task/by_id/:id", getTaskByID)
 	app.Put("/update/:id", updateTask)
 	app.Delete("/delete/:id", deleteTask)
-	app.Put("/done/:id'", doneTask)
+	app.Put("/done/:id", doneTask)
 
 }
 
