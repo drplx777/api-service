@@ -32,11 +32,16 @@ func main() {
 	}))
 
 	app.Use(middleware.SlogLogger())
+
+	// Регистрируем аутентификационные роуты
+	handler.RegisterAuthRoutes(app)
+
+	// Добавляем middleware аутентификации
+	app.Use(middleware.AuthMiddleware())
+
+	// Регистрируем роуты задач
 	handler.RegisterTaskRoutes(app)
 
-	slog.Info("Service started", "port", 8080)
-	slog.Warn("Low disk space", "disk", "/dev/sda1", "free_percent", 5)
-	slog.Error("Database connection failed", "error", "timeout")
+	slog.Info("Service started", "port", port)
 	log.Fatal(app.Listen(":" + port))
-
 }

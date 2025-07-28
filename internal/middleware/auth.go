@@ -1,19 +1,17 @@
 package middleware
 
 import (
+	"encoding/json"
 	"log/slog"
-	"os"
+	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/golang-jwt/jwt/v5"
 )
-
-var JWTSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func AuthMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		// Пропуск публичных эндпоинтов
+		// Пропускаем публичные эндпоинты
 		if c.Path() == "/api/login" || c.Path() == "/api/register" {
 			return c.Next()
 		}
@@ -24,28 +22,46 @@ func AuthMiddleware() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Authorization header missing"})
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token == authHeader {
 			slog.Warn("Invalid token format")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token format"})
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return JWTSecret, nil
-		})
+		// Проверяем токен через auth-service
+		req, err := http.NewRequest("GET", "http://auth-service:5000/validate?token="+token, nil)
+		if err != nil {
+			slog.Error("Failed to create validation request", "error", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Internal server error"})
+		}
 
-		if err != nil || !token.Valid {
-			slog.Warn("Invalid token", "error", err)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			slog.Error("Failed to connect to auth-service", "error", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Authentication service unavailable"})
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return c.Status(resp.StatusCode).SendString("Invalid token")
+		}
+
+		var result struct {
+			Valid    bool `json:"valid"`
+			UserID   int  `json:"userID"`
+			UserRole int  `json:"userRole"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			slog.Error("Failed to parse validation response", "error", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Internal server error"})
+		}
+
+		if !result.Valid {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Locals("userID", claims["sub"])
-			c.Locals("userRole", claims["role"])
-		}
+		c.Locals("userID", result.UserID)
+		c.Locals("userRole", result.UserRole)
 
 		return c.Next()
 	}
