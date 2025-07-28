@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: Task API
+  description: API для управления задачами
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /list:
+    get:
+      summary: Получить список задач
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+
+  /create:
+    post:
+      summary: Создать новую задачу
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTask'
+      responses:
+        '201':
+          description: Задача создана
+        '500':
+          description: Ошибка сервера
+
+  /task/by_id/{id}:
+    get:
+      summary: Получить задачу по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Не найдено
+
+  /update/{id}:
+    put:
+      summary: Обновить задачу по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTask'
+      responses:
+        '200':
+          description: Обновлено
+        '500':
+          description: Ошибка
+
+  /done/{id}:
+    put:
+      summary: Отметить задачу как выполненную
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Готово
+        '404':
+          description: Не найдено
+
+  /delete/{id}:
+    delete:
+      summary: Удалить задачу
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Удалено
+        '404':
+          description: Не найдено
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        done:
+          type: boolean
+    NewTask:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+        description:
+          type: string
