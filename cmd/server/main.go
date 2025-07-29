@@ -12,12 +12,6 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
-	slog.SetDefault(logger)
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
