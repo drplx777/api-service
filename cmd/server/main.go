@@ -27,13 +27,10 @@ func main() {
 
 	app.Use(middleware.SlogLogger())
 
-	// Регистрируем аутентификационные роуты
 	handler.RegisterAuthRoutes(app)
 
-	// Добавляем middleware аутентификации
 	app.Use(middleware.AuthMiddleware())
 
-	// Регистрируем роуты задач
 	handler.RegisterTaskRoutes(app)
 
 	slog.Info("Service started", "port", port)
