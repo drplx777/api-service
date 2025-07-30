@@ -29,7 +29,7 @@ func main() {
 
 	handler.RegisterAuthRoutes(app)
 
-	app.Use(middleware.AuthMiddleware())
+	//app.Use(middleware.AuthMiddleware())
 
 	handler.RegisterTaskRoutes(app)
 
