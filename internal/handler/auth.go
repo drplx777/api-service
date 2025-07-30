@@ -85,7 +85,7 @@ func proxyValidateToken(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", c.Get("Authorization"))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
