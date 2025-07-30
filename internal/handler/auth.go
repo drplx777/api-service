@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"api-service/internal/client"
 	"bytes"
 	"io"
 	"log/slog"
+	"net/http"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -15,24 +15,52 @@ func RegisterAuthRoutes(app *fiber.App) {
 }
 
 func proxyRegister(c fiber.Ctx) error {
-	// Проксируем запрос в auth-service
-	resp, err := client.Post("http://auth-service:5000/register", bytes.NewReader(c.Body()))
+	// Используем прямой URL к auth-service
+	authServiceURL := "http://auth-service:5000/register"
+
+	// Создаем новый HTTP запрос
+	req, err := http.NewRequest("POST", authServiceURL, bytes.NewReader(c.Body()))
+	if err != nil {
+		slog.Error("Failed to create request", "error", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
+	}
+
+	// Копируем заголовки
+	req.Header.Set("Content-Type", "application/json")
+
+	// Выполняем запрос
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		slog.Error("Failed to connect to auth-service", "error", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Service unavailable")
 	}
 	defer resp.Body.Close()
 
+	// Возвращаем ответ
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read response body")
 	}
+
 	c.Status(resp.StatusCode)
 	return c.Send(body)
 }
 
 func proxyLogin(c fiber.Ctx) error {
-	resp, err := client.Post("http://auth-service:5000/login", bytes.NewReader(c.Body()))
+	// Аналогично для входа
+	authServiceURL := "http://auth-service:5000/login"
+
+	req, err := http.NewRequest("POST", authServiceURL, bytes.NewReader(c.Body()))
+	if err != nil {
+		slog.Error("Failed to create request", "error", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		slog.Error("Failed to connect to auth-service", "error", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Service unavailable")
@@ -43,6 +71,7 @@ func proxyLogin(c fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read response body")
 	}
+
 	c.Status(resp.StatusCode)
 	return c.Send(body)
 }
