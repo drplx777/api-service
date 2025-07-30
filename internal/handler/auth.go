@@ -5,6 +5,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -77,27 +79,48 @@ func proxyLogin(c fiber.Ctx) error {
 	return c.Send(body)
 }
 func proxyValidateToken(c fiber.Ctx) error {
+	// Берём заголовок Authorization: Bearer <token>
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Authorization header is missing")
+	}
 
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return c.Status(fiber.StatusBadRequest).SendString("Malformed Authorization header")
+	}
+	token := parts[1]
+
+	// Формируем URL с query-параметром token
 	authServiceURL := "http://auth-service:5000/validate"
-	req, err := http.NewRequest("GET", authServiceURL, nil)
+	u, err := url.Parse(authServiceURL)
+	if err != nil {
+		slog.Error("Failed to parse auth-service URL", "error", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
+	}
+	q := u.Query()
+	q.Set("token", token)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		slog.Error("Failed to create request", "error", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
 	}
 
-	req.Header.Set("Authorization", c.Get("Authorization"))
-
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		slog.Error("Failed to connect to auth-service", "error", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Service unavailable")
+		return c.Status(fiber.StatusServiceUnavailable).SendString("Service unavailable")
 	}
 	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read response body")
 	}
+
 	c.Status(resp.StatusCode)
 	return c.Send(body)
 }
